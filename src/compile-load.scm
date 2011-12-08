@@ -302,6 +302,12 @@
   (if (not (string? to-file))
       (error "Invalid argument to module-compile-bunch (to-file)"
              to-file))
+  (if (not (let recur ((files files))
+             (cond
+              ((null? files) #t)
+              ((string? (car files)) (recur (cdr files)))
+              (else #f))))
+      (error (string-append "Invalid argument to module-compile-bunch (files): " (object->string files))))
   (generate-tmp-dir
    (path-expand "compile-tmp"
                 *blackhole-work-dir*)
