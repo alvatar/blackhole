@@ -288,11 +288,15 @@
               ld-options
               verbose?))
 
+;;; Core function for module compilation. Utility compilation functions are based on it.
+
 (define (module-compile-bunch mode
                               to-file
                               files
                               #!key
+                              compile-to-c?
                               (port (current-output-port))
+                              (c-files-listing-port (current-error-port))
                               (options '())
                               (cc-options "")
                               (ld-options-prelude "")
@@ -302,12 +306,14 @@
   (if (not (string? to-file))
       (error "Invalid argument to module-compile-bunch (to-file)"
              to-file))
-  (if (not (let recur ((files files))
-             (cond
-              ((null? files) #t)
-              ((string? (car files)) (recur (cdr files)))
-              (else #f))))
-      (error (string-append "Invalid argument to module-compile-bunch (files): " (object->string files))))
+  (if (or (null? files)
+          (let recur ((files files))
+            (cond
+             ((null? files) #f)
+             ((string? (car files)) (recur (cdr files)))
+             (else #t))))
+      (error "Invalid argument to module-compile-bunch (files)"
+             files))
   (generate-tmp-dir
    (path-expand "compile-tmp"
                 *blackhole-work-dir*)
@@ -315,6 +321,7 @@
      (define standalone #f)
      (define save-depfile #t)
      (define save-links #f)
+     (if compile-to-c? (set! save-depfile #f))
 
      (case mode
        ((exe)
@@ -333,7 +340,6 @@
              (let loop ((mods mods) (i 0))
                (cond
                 ((null? mods) '())
-                
                 (else
                  (let ((mod (car mods)))
                    (cons (path-expand
@@ -366,7 +372,6 @@
                            ,@accum)))))
                  (else
                   accum)))))
-
             (deps-tree empty-tree)
             (ld-options-prelude-accum "")
             (ld-options-accum ""))
@@ -376,72 +381,86 @@
        (display " files...\n" port)
        
        (for-each
-           (lambda (mod c-file file)
-             (display " * " port)
-             (display (if verbose?
-                          file
-                          (path-strip-directory file))
-                      port)
-             (display " ." port)
-             (let ((runtime-code
-                    compiletime-code
-                    visit-code
-                    info-code
-                    (module-macroexpand mod (file-read-as-expr file))))
-               (let* ((info-tbl
-                       (list->table
-                        (u8vector->module-reference (eval-no-hook info-code))))
-                      
-                      (compile-sexp-to-o
-                       (lambda (sexp fn)
-                         (compile-sexp-to-c
-                          (expr:deep-fixup sexp)
-                          fn
-                          options:
-                          (append (table-ref info-tbl 'options)
-                                  options))
-                         (display "." port)
-                         (compile-c-to-o
-                          fn
-                          verbose?: verbose?
-                          cc-options: (string-append cc-options " " (table-ref info-tbl 'cc-options))
-                          shared: (not (eq? mode 'exe)))
-                         (display "." port))))
+        (lambda (mod c-file file)
+          (display " * " port)
+          (display (if verbose?
+                       file
+                       (path-strip-directory file))
+                   port)
+          (display " ." port)
+          (let ((runtime-code
+                 compiletime-code
+                 visit-code
+                 info-code
+                 (module-macroexpand mod (file-read-as-expr file))))
+            (let* ((info-tbl
+                    (list->table
+                     (u8vector->module-reference (eval-no-hook info-code))))
+                   (compile-sexp-to-c (lambda (sexp fn)
+                                        (compile-sexp-to-c
+                                         (expr:deep-fixup sexp)
+                                         fn
+                                         options:
+                                         (append (table-ref info-tbl 'options)
+                                                 options))
+                                        (display "." port)))
+                   (compile-sexp-to-o (lambda (sexp fn)
+                                        (compile-sexp-to-c sexp fn)
+                                        (display "." port)
+                                        (compile-c-to-o
+                                         fn
+                                         verbose?: verbose?
+                                         cc-options: (string-append cc-options " " (table-ref info-tbl 'cc-options))
+                                         shared: (not (eq? mode 'exe)))
+                                        (display "." port)))
+                   (compile-sexp (if compile-to-c?
+                                     compile-sexp-to-c
+                                     compile-sexp-to-o)))
 
-                 (set! ld-options-prelude-accum
-                       (string-append ld-options-prelude-accum
-                                      " "
-                                      (table-ref info-tbl 'ld-options-prelude)))
-                 (set! ld-options-accum
-                       (string-append ld-options-accum
-                                      " "
-                                      (table-ref info-tbl 'ld-options)))
+              (set! ld-options-prelude-accum
+                    (string-append ld-options-prelude-accum
+                                   " "
+                                   (table-ref info-tbl 'ld-options-prelude)))
+              (set! ld-options-accum
+                    (string-append ld-options-accum
+                                   " "
+                                   (table-ref info-tbl 'ld-options)))
                  
-                 (let ((add-deps!
-                        (lambda (deps)
-                          (for-each
-                              (lambda (dep)
-                                (set! deps-tree
-                                      (tree-add deps-tree
-                                                (module-reference-absolutize
-                                                 dep
-                                                 mod)
-                                                module-reference<?)))
-                            deps))))
-                   (add-deps! (table-ref info-tbl 'runtime-dependencies))
-                   (add-deps! (table-ref info-tbl 'compiletime-dependencies)))
+              (let ((add-deps!
+                     (lambda (deps)
+                       (for-each
+                        (lambda (dep)
+                          (set! deps-tree
+                                (tree-add deps-tree
+                                          (module-reference-absolutize
+                                           dep
+                                           mod)
+                                          module-reference<?)))
+                        deps))))
+                (add-deps! (table-ref info-tbl 'runtime-dependencies))
+                (add-deps! (table-ref info-tbl 'compiletime-dependencies)))
                  
-                 (compile-sexp-to-o runtime-code
-                                    (string-append c-file "-rt.c"))
-                 (if (not standalone)
-                     (begin
-                       (compile-sexp-to-o compiletime-code
-                                          (string-append c-file "-ct.c"))
-                       (compile-sexp-to-o visit-code
-                                          (string-append c-file "-vt.c"))
-                       (compile-sexp-to-o info-code
-                                          (string-append c-file "-mi.c"))))))
-             (newline port))
+              (let ((compile-part
+                     (lambda (code-part suffix)
+                       (let* ((tmp-rt-path (string-append c-file suffix))
+                              (rt-filename (path-strip-directory tmp-rt-path))
+                              (new-rt-path (string-append (current-directory)
+                                                          rt-filename)))
+                         (compile-sexp code-part tmp-rt-path)
+                         (if compile-to-c?
+                             (begin 
+                               (if (file-exists? new-rt-path) (delete-file new-rt-path))
+                               (copy-file tmp-rt-path new-rt-path)
+                               (display new-rt-path c-files-listing-port)
+                               (newline c-files-listing-port)))))))
+                (begin
+                  (compile-part runtime-code "-rt.c")
+                  (if (not standalone)
+                      (begin
+                        (compile-part compiletime-code "-ct.c")
+                        (compile-part visit-code "-vt.c")
+                        (compile-part info-code "-mi.c")))))))
+          (if (not compile-to-c?) (newline port)))
         mods c-files-no-ext files)
        
        (let ((link-c-file
@@ -467,28 +486,35 @@
           (map path-strip-extension c-files)
           output: link-c-file
           warnings?: #f)
-         
-         (display "Compiling link file..\n" port)
-         (compile-c-to-o link-c-file
-                         verbose?: verbose?
-                         cc-options: cc-options
-                         shared: (not (eq? mode 'exe)))
-         
-         (display "Linking files..\n" port)
-         (link-files
-          (map (lambda (fn)
-                 (string-append (path-strip-extension fn)
-                                ".o"))
-               (cons link-c-file c-files))
-          (path-expand to-file (current-directory))
-          standalone: standalone
-          verbose?: verbose?
-          ld-options-prelude: (string-append ld-options-prelude
-                                             " "
-                                             ld-options-prelude-accum)
-          ld-options: (string-append ld-options
-                                     " "
-                                     ld-options-accum)))
+         (if compile-to-c?
+             (let* ((link-c-filename (path-strip-directory link-c-file))
+                    (new-link-c-file (string-append (current-directory) link-c-filename)))
+               (if (file-exists? new-link-c-file) (delete-file new-link-c-file))
+               (copy-file link-c-file new-link-c-file)
+               (display new-link-c-file c-files-listing-port)
+               (newline c-files-listing-port))
+             (begin
+               (display "Compiling link file..\n" port)
+               (compile-c-to-o link-c-file
+                               verbose?: verbose?
+                               cc-options: cc-options
+                               shared: (not (eq? mode 'exe)))
+              
+               (display "Linking files..\n" port)
+               (link-files
+                (map (lambda (fn)
+                       (string-append (path-strip-extension fn)
+                                      ".o"))
+                     (cons link-c-file c-files))
+                (path-expand to-file (current-directory))
+                standalone: standalone
+                verbose?: verbose?
+                ld-options-prelude: (string-append ld-options-prelude
+                                                   " "
+                                                   ld-options-prelude-accum)
+                ld-options: (string-append ld-options
+                                           " "
+                                           ld-options-accum)))))
 
        (if save-depfile
            (let ((dep-list

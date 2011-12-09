@@ -12,6 +12,7 @@
 (define short-opts
   '((#\b 1 "bunch") ;; 1 means that bunch takes an argument ...
     (#\c 0 "compile") ;; ... compile doesn't (hence 0)
+    (#\C 0 "compile-to-c")
     (#\D 0 "ignore-dependencies")
     (#\e 1 "eval")
     (#\f 0 "force")
@@ -154,13 +155,17 @@
     pkgs))
 
 (define (exe-cmd cmd opts args)
+  (define compile-to-c #f)
   (define output-fn #f)
   (define quiet #f)
   (define verbose #f)
   
   (handle-opts!
    opts
-   `(("output"
+   `(("compile-to-c"
+      ,@(lambda (val)
+          (set! compile-to-c (not (equal? val "no")))))
+     ("output"
       ,@(lambda (val)
           (set! output-fn val)))
      ("quiet"
@@ -178,12 +183,14 @@
   (module-compile-to-standalone
    output-fn
    (module-reference-from-file (car args))
+   compile-to-c?: compile-to-c
    port: (if quiet
              (open-string "")
              (current-output-port))
    verbose?: verbose))
 
 (define (compile-cmd cmd opts args)
+  (define compile-to-c #f)
   (define recursive #f)
   (define bunch #f)
   (define quiet #f)
@@ -193,7 +200,10 @@
 
   (handle-opts!
    opts
-   `(("recursive"
+   `(("compile-to-c"
+      ,@(lambda (val)
+          (set! compile-to-c (not (equal? val "no")))))
+     ("recursive"
       ,@(lambda (val)
           (set! recursive (not (equal? val "no")))))
      ("bunch"
@@ -232,10 +242,12 @@
         (module-compile-bunch 'link
                               bunch
                               (map module-reference-path mods-and-deps)
+                              compile-to-c?: compile-to-c
                               modules: mods-and-deps
                               port: port
                               verbose?: verbose)
         (modules-compile! mods-and-deps
+                          compile-to-c?: compile-to-c
                           continue-on-error?: continue
                           port: port
                           force?: force

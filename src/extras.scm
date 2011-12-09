@@ -4,10 +4,12 @@
 ;;;                                                                  ;;;
 ;;;  --------------------------------------------------------------  ;;;
 
+;;; Compile one module
+
 (define (module-compile! mod
                          #!key
+                         compile-to-c?
                          continue-on-error?
-                         to-c
                          (port (current-output-port))
                          verbose?
                          (options '())
@@ -29,6 +31,7 @@
                                           (object-file-extract-number lo)
                                           0)))))
                              (list path)
+                             compile-to-c?: compile-to-c?
                              options: options
                              cc-options: cc-options
                              ld-options-prelude: ld-options-prelude
@@ -46,10 +49,15 @@
          perform-compile!)
         (perform-compile!))))
 
+;;; Compile several modules. Based on modules-compile!
 
 (define (modules-compile! mods
                           #!key
-                          continue-on-error? port force? verbose?)
+                          compile-to-c?
+                          continue-on-error?
+                          port
+                          force?
+                          verbose?)
   (let* ((mods (resolve-modules mods))
          (mods-sorted
           (filter (lambda (x)
@@ -63,8 +71,8 @@
                             (let ((info
                                    (loaded-module-info
                                     (module-reference-ref x))))
-                            (cons x
-                                  (module-info-dependencies info))))
+                              (cons x
+                                    (module-info-dependencies info))))
                           mods))))))
          (nmods (length mods-sorted))
          (port (or port (current-output-port)))
@@ -78,9 +86,9 @@
      (lambda (mod)
        (display " * " port)
        (display (loader-prettify-path
-               (module-reference-loader mod)
-               (module-reference-path mod))
-              port)
+                 (module-reference-loader mod)
+                 (module-reference-path mod))
+                port)
        (display " (" port)
        (write file-number port)
        (display "/" port)
@@ -89,6 +97,7 @@
        ;; The module might have been compiled by load-once earlier.
        (if (or force? (module-needs-compile? mod))
            (module-compile! mod
+                            compile-to-c?: compile-to-c?
                             continue-on-error?: continue-on-error?
                             port: (open-u8vector)
                             verbose?: verbose?))
@@ -170,9 +179,10 @@
              (cons mod (module-deps mod recursive?)))
         mods))))))
 
-(define (module-compile/deps! mod #!key continue-on-error? port force?)
+(define (module-compile/deps! mod #!key compile-to-c? continue-on-error? port force?)
   (let ((mod (resolve-one-module mod)))
     (modules-compile! (cons mod (module-deps mod #t))
+                      compile-to-c?: compile-to-c?
                       continue-on-error?: continue-on-error?
                       port: port
                       force?: force?)))
@@ -192,6 +202,7 @@
 
 (define (module-compile-to-standalone name mod
                                       #!key
+                                      compile-to-c?
                                       verbose?
                                       (port (current-output-port)))
   (let* ((mod (resolve-one-module mod))
@@ -204,6 +215,7 @@
             (loader-real-path (module-reference-loader mref)
                               (module-reference-path mref)))
        mods)
+     compile-to-c?: compile-to-c?
      modules: mods
      verbose?: verbose?
      port: port)))
