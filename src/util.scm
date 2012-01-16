@@ -1,5 +1,16 @@
 ;; Utilities
 
+(define-macro (ps form)
+  `(let ((r ,form))
+     (pp r)
+     (step)
+     r))
+
+(define-macro (pv form)
+  `(let ((r ,form))
+     (pp r)
+     r))
+
 (##define-syntax get-path
   (lambda (a)
     (vector-ref a 2)))

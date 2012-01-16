@@ -82,7 +82,10 @@
          visit-code
          info-code
          (module-macroexpand module-ref
-                             (file-read-as-expr file))))
+                             (file-read-as-expr file)
+                             ;;; TODO: IMPORTANTE!!! Esto hay que canalizarlo adecuadamente desde ol origen de la llamada
+                             ;avoid-force-compile?: #t
+                             )))
     (values (lambda ()
               (eval-no-hook runtime-code))
             (eval-no-hook compiletime-code)
@@ -363,7 +366,7 @@
                   (let ((f (car fs)))
                     (loop
                      (cdr fs)
-                     (if standalone
+                     (if (or standalone compile-to-c?)
                          (cons (string-append f "-rt.c") accum)
                          `(,(string-append f "-rt.c")
                            ,(string-append f "-ct.c")
@@ -392,7 +395,9 @@
                  compiletime-code
                  visit-code
                  info-code
-                 (module-macroexpand mod (file-read-as-expr file))))
+                 (module-macroexpand mod
+                                     (file-read-as-expr file)
+                                     avoid-force-compile?: compile-to-c?)))
             (let* ((info-tbl
                     (list->table
                      (u8vector->module-reference (eval-no-hook info-code))))
@@ -455,7 +460,7 @@
                                (newline c-files-listing-port)))))))
                 (begin
                   (compile-part runtime-code "-rt.c")
-                  (if (not standalone)
+                  (if (not (or standalone compile-to-c?))
                       (begin
                         (compile-part compiletime-code "-ct.c")
                         (compile-part visit-code "-vt.c")
@@ -480,7 +485,7 @@
                         try))))))
          
          (display "Creating link file..\n" port)
-         ((if standalone
+         ((if (or standalone compile-to-c?)
               link-incremental
               link-flat)
           (map path-strip-extension c-files)

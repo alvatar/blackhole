@@ -358,7 +358,9 @@
 
 (define (module-macroexpand module-reference
                             sexpr
-                            #!optional (tower (make-syntactic-tower)))
+                            #!key
+                            (tower (make-syntactic-tower))
+                            (avoid-force-compile? #f))
   (let ((definitions '())
         (unknown-definitions '())
         (macros '())
@@ -548,7 +550,7 @@
                               (cc-options ,@cc-options-)
                               (ld-options-prelude ,@ld-options-prelude-)
                               (ld-options ,@ld-options-)
-                              (force-compile ,@force-compile-)
+                              (force-compile ,@(if avoid-force-compile? #f force-compile-))
                               (no-global-state ,@no-global-state-)))
                            (vec (module-reference->u8vector info)))
                       `',vec))))))))

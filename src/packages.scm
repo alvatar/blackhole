@@ -714,8 +714,10 @@
               invoke-compiletime
               visit
               info-alist
-              (load-module-from-file ref
-                                     actual-path)))
+              (begin
+                (pp 'package-loader)
+                (load-module-from-file ref
+                                       actual-path))))
          (make-loaded-module
           invoke-runtime: invoke-runtime
           invoke-compiletime: invoke-compiletime

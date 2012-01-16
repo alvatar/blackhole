@@ -59,6 +59,7 @@
 
 ;; Loads a module, regardless of whether it's already loaded or not.
 (define (module-reference-load! ref)
+  (pp 'module-reference-load!)
   (let ((previously-loaded-module
          (table-ref *loaded-module-registry* ref #f))
         (loaded-module
