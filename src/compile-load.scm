@@ -162,7 +162,7 @@
 
          (force-compile
           (lambda ()
-            (module-compile! module-ref)
+            (module-compile! module-ref compile-to-c?: *compile-to-c*)
             (load-module-from-file module-ref file-with-extension))))
     
     (cond
