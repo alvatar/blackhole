@@ -248,7 +248,6 @@
      (let ((ref (make-module-reference local-loader path)))
        (call-with-values
            (lambda ()
-             (pp 'local-loader)
              (load-module-from-file ref path))
          (lambda (invoke-runtime
                   invoke-compiletime

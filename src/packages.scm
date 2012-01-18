@@ -715,7 +715,6 @@
               visit
               info-alist
               (begin
-                (pp 'package-loader)
                 (load-module-from-file ref
                                        actual-path))))
          (make-loaded-module

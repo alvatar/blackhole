@@ -82,10 +82,7 @@
          visit-code
          info-code
          (module-macroexpand module-ref
-                             (file-read-as-expr file)
-                             ;;; TODO: IMPORTANTE!!! Esto hay que canalizarlo adecuadamente desde ol origen de la llamada
-                             ;avoid-force-compile?: #t
-                             )))
+                             (file-read-as-expr file))))
     (values (lambda ()
               (eval-no-hook runtime-code))
             (eval-no-hook compiletime-code)
@@ -396,8 +393,7 @@
                  visit-code
                  info-code
                  (module-macroexpand mod
-                                     (file-read-as-expr file)
-                                     avoid-force-compile?: compile-to-c?)))
+                                     (file-read-as-expr file))))
             (let* ((info-tbl
                     (list->table
                      (u8vector->module-reference (eval-no-hook info-code))))
