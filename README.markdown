@@ -64,6 +64,8 @@ Modules are compiled using the `bh` command.
 * `bh compile test.scm` compiles the module found in "test.scm".
 * `bh compile -r test.scm` compiles the module found in
    "test.scm" and all its dependencies.
+* `bh compile -C test.scm` compiles the module to a runtime C file
+   and a C link file
 * `bh exe --output=a.out test.scm` compiles the module
    found in "test.scm" to a standalone executable "a.out"
 
