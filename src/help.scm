@@ -171,7 +171,8 @@ THE-END
 )
 
 (define help-exe #<<THE-END
-Usage: bh exe [--output/-o] [--quiet/-q] [--verbose/-v] MODULE-FILE
+Usage: bh exe [--output/-o] [--quiet/-q] [--verbose/-v] [--to-c/-C]
+              MODULE-FILE ...
 
 Compiles a module and its dependencies into a standalone executable.
 The executable does not contain any Black Hole code or module
@@ -204,7 +205,7 @@ THE-END
 
 (define help-compile #<<THE-END
 Usage: bh compile [--recursive/-r] [--bunch/-b] [--continue/-k]
-                  [--quiet/-q] [--verbose/-v] [--force/-f]
+                  [--quiet/-q] [--verbose/-v] [--force/-f] [--to-c/-C]
                   MODULE-FILE ...
 
 Compiles one or more module files to .o[n] and .o[n].deps files. The

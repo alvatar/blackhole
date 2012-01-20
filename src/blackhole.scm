@@ -44,7 +44,7 @@
 (define *compiler-cc-options* "")
 (define *compiler-ld-options-prelude* "")
 (define *compiler-ld-options* "")
-(define *compile-to-c*)
+(define *compile-to-c* #f)
 
 (set! *module-resolvers*
       `((here ,@current-module-resolver)
