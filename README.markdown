@@ -66,8 +66,8 @@ Modules are compiled using the `bh` command.
    "test.scm" and all its dependencies.
 * `bh compile -C test.scm` compiles the module to a runtime C file
    and a C link file
-* `bh compile --cond-expand-features=feature1:feature2 test.scm` compiles
-   with cond-expand-features "feature1" and "feature2" (see SRFI-0)
+* `bh compile --features=feature1:feature2 test.scm` compiles with
+   cond-expand features "feature1" and "feature2" (see SRFI-0)
 * `bh exe --output=a.out test.scm` compiles the module
    found in "test.scm" to a standalone executable "a.out"
 
