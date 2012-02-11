@@ -17,7 +17,7 @@
   '((#\b 1 "bunch") ;; 1 means that bunch takes an argument ...
     (#\c 0 "compile") ;; ... compile doesn't (hence 0)
     (#\C 0 "to-c")
-    (#\x 1 "cond-expand-features")
+    (#\x 1 "features")
     (#\D 0 "ignore-dependencies")
     (#\e 1 "eval")
     (#\f 0 "force")
@@ -193,7 +193,7 @@
           (begin
             (set! *compile-to-c* #t)
             (set! to-c (not (equal? val "no"))))))
-     ("cond-expand-features"
+     ("features"
       ,@(lambda (val)
           (define-cond-expand-features-from-cli val)))
      ("output"
@@ -238,7 +238,7 @@
           (begin
             (set! *compile-to-c* #t)
             (set! to-c (not (equal? val "no"))))))
-     ("cond-expand-features"
+     ("features"
       ,@(lambda (val)
           (define-cond-expand-features-from-cli val)))
      ("recursive"
@@ -672,7 +672,7 @@
       ,@(lambda (val)
           (println "Black Hole for Gambit Scheme, version [not yet determined]")
           (exit 0)))
-     ("cond-expand-features"
+     ("features"
       ,@(lambda (val)
           (define-cond-expand-features-from-cli val)))
      ("eval"
