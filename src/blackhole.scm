@@ -52,6 +52,8 @@
         (lib ,@lib-module-resolver)
         (pkg ,@package-module-resolver)))
 
+;; Add cond-expand feature by default
+(set! ##cond-expand-features (cons 'black-hole ##cond-expand-features))
 
 ;; ---------- Add the hooks =) ----------
 

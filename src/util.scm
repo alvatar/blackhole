@@ -11,9 +11,90 @@
      (pp r)
      r))
 
+(define-macro (push! list obj)
+  `(set! ,list (cons ,obj ,list)))
+
+(define-macro (pop! list)
+  ;; We don't need to worry about double-evaluating list, because it
+  ;; has to be a simple identifier anyways or the set! won't work.
+  (let ((tmp (gensym 'tmp)))
+    `(let* ((,tmp (car ,list)))
+       (set! ,list (cdr ,list))
+       ,tmp)))
+
+(define (reverse! lst)
+  (let loop ((lst lst) (accum '()))
+    (cond
+     ((pair? lst)
+      (let ((rest (cdr lst)))
+        (set-cdr! lst accum)
+        (loop rest lst)))
+
+     (else
+      accum))))
+
 (##define-syntax get-path
   (lambda (a)
     (vector-ref a 2)))
+
+(define (find-one? pred? lst)
+    (let loop ((lst lst))
+      (cond
+       ((null? lst)
+        #f)
+
+       ((pair? lst)
+        (if (pred? (car lst))
+            #t
+            (loop (cdr lst))))
+
+       (else
+        (error "Improper list" lst)))))
+
+(define (string-for-each fn str)
+  (let ((len (string-length str)))
+    (let loop ((i 0))
+      (cond
+       ((= i len) #!void)
+       (else
+        (fn (string-ref str i))
+        (loop (+ i 1)))))))
+
+(define (reverse-list->string list)
+  (let* ((len (length list))
+         (str (make-string len)))
+    (let loop ((i (- len 1))
+               (list list))
+      (cond
+       ((pair? list)
+        (string-set! str i (car list))
+        (loop (- i 1) (cdr list)))))
+    str))
+
+(define (string-split chr str #!optional (sparse #f))
+  (let* ((curr-str '())
+         (result '())
+         (new-str (lambda ()
+                    (push! result (reverse-list->string curr-str))
+                    (set! curr-str '())))
+         (add-char (lambda (chr)
+                     (push! curr-str chr))))
+    (string-for-each (lambda (c)
+                       (cond
+                        ((eq? c chr)
+                         (if (or (not sparse)
+                                 (not (null? curr-str)))
+                             (new-str)))
+                        (else
+                         (add-char c))))
+                     str)
+    (new-str)
+    (reverse result)))
+
+(define (join between args)
+  (cond ((null? args) '())
+        ((null? (cdr args)) (list (car args)))
+        (else `(,(car args) ,between ,@(join between (cdr args))))))
 
 (define (string-contains haystack chr)
   (call/cc
@@ -53,28 +134,6 @@
                  (string-length needle)
                  (string-length haystack))
       haystack))
-
-(define-macro (push! list obj)
-  `(set! ,list (cons ,obj ,list)))
-
-(define-macro (pop! list)
-  ;; We don't need to worry about double-evaluating list, because it
-  ;; has to be a simple identifier anyways or the set! won't work.
-  (let ((tmp (gensym 'tmp)))
-    `(let* ((,tmp (car ,list)))
-       (set! ,list (cdr ,list))
-       ,tmp)))
-
-(define (reverse! lst)
-  (let loop ((lst lst) (accum '()))
-    (cond
-     ((pair? lst)
-      (let ((rest (cdr lst)))
-        (set-cdr! lst accum)
-        (loop rest lst)))
-
-     (else
-      accum))))
 
 (define (file-last-changed-seconds fn)
   (time->seconds

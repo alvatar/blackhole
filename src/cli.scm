@@ -9,10 +9,15 @@
     (display "\n") err)
   (exit 1))
 
+;;;-----------------------------------------------------------------------------
+;;; Command-line parsing
+;;;-----------------------------------------------------------------------------
+
 (define short-opts
   '((#\b 1 "bunch") ;; 1 means that bunch takes an argument ...
     (#\c 0 "compile") ;; ... compile doesn't (hence 0)
     (#\C 0 "to-c")
+    (#\x 1 "cond-expand-features")
     (#\D 0 "ignore-dependencies")
     (#\e 1 "eval")
     (#\f 0 "force")
@@ -146,6 +151,10 @@
        die/error
        (cons "Expected exactly one argument:" args))))
 
+;;;-----------------------------------------------------------------------------
+;;; Utils
+;;;-----------------------------------------------------------------------------
+
 (define (display-pkgs pkgs port)
   (for-each
       (lambda (pkg)
@@ -154,12 +163,29 @@
         (newline port))
     pkgs))
 
+(define (define-cond-expand-features-from-cli val)
+  (set! ##cond-expand-features
+                (append (map
+                         string->symbol
+                         (filter
+                          (lambda (s) (not (equal? s "")))
+                          (string-split
+                           #\:
+                           (symbol->string (with-input-from-string val read)))))
+                        ##cond-expand-features)))
+
+;;;-----------------------------------------------------------------------------
+;;; Commands
+;;;-----------------------------------------------------------------------------
+
+;;; exe
+
 (define (exe-cmd cmd opts args)
   (define to-c #f)
   (define output-fn #f)
   (define quiet #f)
   (define verbose #f)
-  
+    
   (handle-opts!
    opts
    `(("to-c"
@@ -167,6 +193,9 @@
           (begin
             (set! *compile-to-c* #t)
             (set! to-c (not (equal? val "no"))))))
+     ("cond-expand-features"
+      ,@(lambda (val)
+          (define-cond-expand-features-from-cli val)))
      ("output"
       ,@(lambda (val)
           (set! output-fn val)))
@@ -191,6 +220,8 @@
              (current-output-port))
    verbose?: verbose))
 
+;;; compile
+
 (define (compile-cmd cmd opts args)
   (define to-c #f)
   (define recursive #f)
@@ -207,6 +238,9 @@
           (begin
             (set! *compile-to-c* #t)
             (set! to-c (not (equal? val "no"))))))
+     ("cond-expand-features"
+      ,@(lambda (val)
+          (define-cond-expand-features-from-cli val)))
      ("recursive"
       ,@(lambda (val)
           (set! recursive (not (equal? val "no")))))
@@ -257,6 +291,8 @@
                           force?: force
                           verbose?: verbose))))
 
+;;; clean
+
 (define (clean-cmd cmd opts args)
   (define recursive #f)
   (define quiet #f)
@@ -297,6 +333,8 @@
           (module-clean! mod)
           (newline port))
       mods-and-deps)))
+
+;;; install
 
 (define (install-cmd cmd opts args)
   (define version #t)
@@ -364,6 +402,8 @@
                      port: port
                      verbose?: verbose))
           pkgs-to-be-installed))))
+
+;;; uninstall
 
 (define (uninstall-cmd cmd opts args)
   (define version #t)
@@ -478,6 +518,8 @@
                     (display ".\n" port)))
             to-be-uninstalled)))))
 
+;;; list
+
 (define (list-cmd cmd opts args)
   (define quiet #f)
 
@@ -498,6 +540,8 @@
         (println (package-name&version pkg)))
     (installed-packages)))
 
+;;; search
+
 (define (search-cmd cmd opts args)
   (ensure-no-args! args)
   (handle-opts! opts '())
@@ -512,6 +556,8 @@
                   (package-version pkg))
                  ")"))
     (remote-packages)))
+
+;;; deps
 
 (define (deps-cmd cmd opts args)
   (define quiet #f)
@@ -545,6 +591,8 @@
             deps)))
     args))
 
+;;; exported-names
+
 (define (exported-names-cmd cmd opts args)
   (define quiet #f)
   
@@ -568,6 +616,8 @@
           (module-exported-names
            (module-reference-from-file arg))))
     args))
+
+;;; help
 
 (define (help-cmd cmd opts args)
   (define help-topics
@@ -608,6 +658,8 @@
    (else
     (die/error "Invalid arguments passed to help:" args))))
 
+;;; repl
+
 (define (repl-cmd cmd opts args)
   (define quiet #f)
   (define help #f)
@@ -620,6 +672,9 @@
       ,@(lambda (val)
           (println "Black Hole for Gambit Scheme, version [not yet determined]")
           (exit 0)))
+     ("cond-expand-features"
+      ,@(lambda (val)
+          (define-cond-expand-features-from-cli val)))
      ("eval"
       ,@(lambda (val)
           (eval
@@ -639,10 +694,16 @@
         (println "Gambit Scheme w/ Black Hole"))
     (##repl-debug #f #t))))
 
+;;; Handle unknown command
+
 (define (unknown-cmd cmd opts args-sans-opts)
   (die/error "Unknown command:"
              cmd
              "To get a list of options, type 'bh help'"))
+
+;;;-----------------------------------------------------------------------------
+;;; Main for command-line
+;;;-----------------------------------------------------------------------------
 
 (define (cli arguments)
   (let ((commands
