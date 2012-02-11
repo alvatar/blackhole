@@ -172,6 +172,7 @@ THE-END
 
 (define help-exe #<<THE-END
 Usage: bh exe [--output/-o] [--quiet/-q] [--verbose/-v] [--to-c/-C]
+              [--cond-expand-features=FEATURE1:FEATURE2 ... /-x]
               MODULE-FILE ...
 
 Compiles a module and its dependencies into a standalone executable.
@@ -200,12 +201,16 @@ Options:
                   stored
   --quiet/-q      Don't print anything unless necessary
   --verbose/-v    Verbose output
+  --to-c/-C       Compile to C (producing C files and link file)
+  --cond-expand-features/-x
+                  Add cond-expand features (see SRFI-0)
 THE-END
 )
 
 (define help-compile #<<THE-END
 Usage: bh compile [--recursive/-r] [--bunch/-b] [--continue/-k]
                   [--quiet/-q] [--verbose/-v] [--force/-f] [--to-c/-C]
+                  [--cond-expand-features=FEATURE1:FEATURE2 ... /-x]
                   MODULE-FILE ...
 
 Compiles one or more module files to .o[n] and .o[n].deps files. The
@@ -251,6 +256,9 @@ Options:
   --verbose/-v    Verbose output
   --force/-f      Compile modules even if they don't need to be
                   compiled.
+  --to-c/-C       Compile to C (producing C files and link file)
+  --cond-expand-features/-x
+                  Add cond-expand features (see SRFI-0)
 THE-END
 )
 
@@ -394,6 +402,7 @@ THE-END
 
 (define help-repl #<<THE-END
 Usage: bh [repl] [--version/-v] [-e expr/--eval=expr] [--quiet/-q]
+                 [--cond-expand-features=FEATURE1:FEATURE2 ... /-x]
 
 Opens up a REPL for interactive development.
 
@@ -409,5 +418,7 @@ Options:
   --eval/-e       Evaluate the given expression before opening the
                   REPL.
   --quiet/-q      Don't print the greeting message
+  --cond-expand-features/-x
+                  Add cond-expand features (see SRFI-0)
 THE-END
 )
