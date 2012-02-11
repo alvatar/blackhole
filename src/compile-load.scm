@@ -251,16 +251,17 @@
                                    ".o")
                     #f)))
   
-  (##gambc-cc 'obj
-              (path-directory output)
-              (list c-filename)
-              output
-              (if shared
-                  (string-append "-D___DYNAMIC " cc-options)
-                  cc-options)
-              "" ;; ld-options-prelude
-              "" ;; ld-options
-              verbose?))
+  (let ((cc-options (string-append "-Wno-write-strings" cc-options))) ; Avoid string to char* conversion errors
+    (##gambc-cc 'obj
+                (path-directory output)
+                (list c-filename)
+                output
+                (if shared
+                    (string-append "-D___DYNAMIC " cc-options)
+                    cc-options)
+                "" ;; ld-options-prelude
+                "" ;; ld-options
+                verbose?)))
 
 (define (link-files o-files
                     o1-file
