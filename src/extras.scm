@@ -19,7 +19,11 @@
   (let* ((mod (resolve-one-module mod))
          (perform-compile!
           (lambda ()
-            (let ((path (module-reference-path mod)))
+            (let* ((module-ref-path (module-reference-path mod))
+                   ;; Check if the reference-path is from a package and process it properly
+                   (path (if (package-module-path? module-ref-path)
+                             (package-module-path-path module-ref-path)
+                             module-ref-path)))
               (let ((result (module-compile-bunch
                              'dyn
                              (string-append
